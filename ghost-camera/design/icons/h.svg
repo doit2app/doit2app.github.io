@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FDA4AF"/><stop offset="1" stop-color="#FB923C"/></linearGradient></defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <!-- 지난 사진의 흐린 테두리(고스트) 위에 지금 사진이 정확히 겹쳐지는 순간 -->
+  <rect x="250" y="210" width="480" height="560" rx="30" fill="none" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="22" stroke-dasharray="48 30"/>
+  <rect x="294" y="254" width="480" height="560" rx="30" fill="#FFFBF5"/>
+  <rect x="330" y="290" width="408" height="408" rx="12" fill="#FFE4E6"/>
+  <path d="M534 612 c-90 -60 -150 -110 -150 -170 c0 -44 34 -74 74 -74 c32 0 60 18 76 46 c16 -28 44 -46 76 -46 c40 0 74 30 74 74 c0 60 -60 110 -150 170z" fill="#F43F5E"/>
+</svg>

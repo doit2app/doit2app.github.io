@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#1C1917"/>
+  <!-- 필름 세 칸: 새싹 → 작은 나무 → 큰 나무 -->
+  <rect x="120" y="300" width="784" height="424" rx="20" fill="#292524"/>
+  <g fill="#44403C">
+    <rect x="150" y="320" width="34" height="22" rx="4"/><rect x="230" y="320" width="34" height="22" rx="4"/><rect x="310" y="320" width="34" height="22" rx="4"/><rect x="390" y="320" width="34" height="22" rx="4"/><rect x="470" y="320" width="34" height="22" rx="4"/><rect x="550" y="320" width="34" height="22" rx="4"/><rect x="630" y="320" width="34" height="22" rx="4"/><rect x="710" y="320" width="34" height="22" rx="4"/><rect x="790" y="320" width="34" height="22" rx="4"/>
+    <rect x="150" y="682" width="34" height="22" rx="4"/><rect x="230" y="682" width="34" height="22" rx="4"/><rect x="310" y="682" width="34" height="22" rx="4"/><rect x="390" y="682" width="34" height="22" rx="4"/><rect x="470" y="682" width="34" height="22" rx="4"/><rect x="550" y="682" width="34" height="22" rx="4"/><rect x="630" y="682" width="34" height="22" rx="4"/><rect x="710" y="682" width="34" height="22" rx="4"/><rect x="790" y="682" width="34" height="22" rx="4"/>
+  </g>
+  <g>
+    <rect x="150" y="362" width="226" height="300" rx="8" fill="#E7D8BC"/>
+    <path d="M150 600 h226 v62 h-226z" fill="#C2A878"/>
+    <rect x="258" y="560" width="10" height="40" fill="#8C7552"/><circle cx="263" cy="552" r="18" fill="#A88E64"/>
+  </g>
+  <g>
+    <rect x="399" y="362" width="226" height="300" rx="8" fill="#FDE68A"/>
+    <path d="M399 600 h226 v62 h-226z" fill="#86EFAC"/>
+    <rect x="506" y="530" width="12" height="70" fill="#92400E"/><circle cx="512" cy="515" r="40" fill="#4ADE80"/>
+  </g>
+  <g>
+    <rect x="648" y="362" width="226" height="300" rx="8" fill="#BAE6FD"/>
+    <path d="M648 600 h226 v62 h-226z" fill="#4ADE80"/>
+    <rect x="753" y="500" width="16" height="100" fill="#92400E"/><circle cx="761" cy="468" r="68" fill="#22C55E"/>
+  </g>
+</svg>
