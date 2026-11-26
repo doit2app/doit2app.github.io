@@ -28,6 +28,7 @@ export default function ProjectScreen() {
   const project = data?.project;
   const shots = useMemo(() => data?.shots ?? [], [data]);
   const latest = shots[shots.length - 1];
+  const bytes = useMemo(() => (shots.length ? projectBytes(id) : 0), [id, shots.length]);
 
   // 넘겨보기
   const [playing, setPlaying] = useState(false);
@@ -139,7 +140,7 @@ export default function ProjectScreen() {
         contentContainerStyle={{ padding: 16, gap: GAP, paddingBottom: insets.bottom + 24 }}
         renderItem={({ item }) => <Thumb shot={item} project={project} size={cell} aspect={aspect} />}
         ListFooterComponent={
-          shots.length > 0 ? <Text style={styles.footer}>이 프로젝트가 쓰는 용량 {formatBytes(projectBytes(id))}</Text> : undefined
+          shots.length > 0 ? <Text style={styles.footer}>이 프로젝트가 쓰는 용량 {formatBytes(bytes)}</Text> : undefined
         }
       />
     </View>

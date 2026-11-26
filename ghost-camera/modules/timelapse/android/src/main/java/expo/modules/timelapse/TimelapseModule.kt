@@ -155,9 +155,16 @@ class TimelapseModule : Module() {
     while (true) {
       val idx = codec.dequeueInputBuffer(10_000)
       if (idx >= 0) {
+        // 버퍼 크기를 먼저 알아 둔다 (getInputImage 뒤에는 이 버퍼를 쓰면 안 된다)
+        val capacity = codec.getInputBuffer(idx)?.capacity() ?: (w * h * 3 / 2)
         val image = codec.getInputImage(idx) ?: throw Exception("인코더 입력을 받지 못했어요")
         writeYuv(image, argb, w, h)
-        codec.queueInputBuffer(idx, 0, w * h * 3 / 2, ptsUs, 0)
+        // 기기마다 줄 간격(rowStride)이 달라서, 실제 평면 배치로 데이터 크기를 잰다
+        val p = image.planes
+        val ySize = p[0].rowStride * h
+        val uvSize = if (p[1].pixelStride == 2) p[1].rowStride * (h / 2) else p[1].rowStride * (h / 2) + p[2].rowStride * (h / 2)
+        val size = minOf(capacity, maxOf(w * h * 3 / 2, ySize + uvSize))
+        codec.queueInputBuffer(idx, 0, size, ptsUs, 0)
         break
       }
       drain(codec, muxer, state, false)
