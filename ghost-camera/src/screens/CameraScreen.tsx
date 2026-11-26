@@ -1,19 +1,32 @@
 import Slider from '@react-native-community/slider';
-import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  Camera,
+  CommonResolutions,
+  type Frame,
+  useCameraPermission,
+  useFrameOutput,
+  usePhotoOutput,
+} from 'react-native-vision-camera';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { HOLD_MS, isAligned } from '../align';
+import { AlignResult, autoAlign } from '../autoAlign';
 import { Grid, LevelLine, SplitGhost, TiltReadout } from '../components/Overlays';
 import { fitSize, ratioValue } from '../frame';
+import { sampleGray } from '../frameSample';
+import { gridSize, loadGray } from '../grayImage';
+import { buildModel, estimate, guideFrom, guideText, isMatched, MatchModel, MatchResult, SCORE_OK } from '../match';
 import { cropToRatio, Project, Shot, shotUri } from '../storage';
 import { Tilt, useTilt } from '../useTilt';
 
 type GhostSource = 'first' | 'previous';
 /** 고스트 보이는 방식: 반투명 겹치기 / 켰다 껐다 / 반반 나눠 보기 */
 type GhostMode = 'overlay' | 'blink' | 'split';
+type Facing = 'back' | 'front';
 
 const MODES: { key: GhostMode; label: string }[] = [
   { key: 'overlay', label: '겹치기' },
@@ -21,18 +34,34 @@ const MODES: { key: GhostMode; label: string }[] = [
   { key: 'split', label: '반반' },
 ];
 
+/** 실시간 비교용 격자 가로 칸 수 (작을수록 빠르다) */
+const LIVE_GRID_W = 32;
+/** 실시간 비교 간격 */
+const LIVE_INTERVAL_MS = 200;
+/** 이보다 오래된 비교 결과는 버린다 */
+const MATCH_STALE_MS = 1000;
+
 type Props = {
   project: Project;
   onClose: () => void;
   onSave: (tempUri: string, tilt: Tilt | null) => Promise<void>;
 };
 
+type Review = {
+  /** 찍은 그대로 */
+  original: string;
+  /** 자동 보정한 사진 (보정할 게 없거나 확실하지 않으면 없음) */
+  aligned: AlignResult | null;
+  aligning: boolean;
+  useAligned: boolean;
+  tilt: Tilt | null;
+};
+
 export function CameraScreen({ project, onClose, onSave }: Props) {
   const insets = useSafeAreaInsets();
-  const [permission, requestPermission] = useCameraPermissions();
-  const camera = useRef<CameraView>(null);
+  const { hasPermission, requestPermission } = useCameraPermission();
 
-  const [facing, setFacing] = useState<CameraType>('back');
+  const [facing, setFacing] = useState<Facing>('back');
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [area, setArea] = useState<{ width: number; height: number } | null>(null);
@@ -46,17 +75,114 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
   const [auto, setAuto] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
 
-  // 찍은 뒤 확인 단계
-  const [review, setReview] = useState<{ uri: string; tilt: Tilt | null } | null>(null);
+  const [review, setReview] = useState<Review | null>(null);
 
   const tilt = useTilt(!review);
 
   const shots = project.shots;
   const ghost: Shot | undefined = source === 'first' ? shots[0] : shots[shots.length - 1];
+  const ghostUri = ghost ? shotUri(ghost) : null;
   const ghostTilt: Tilt | null =
     ghost && ghost.roll != null && ghost.pitch != null ? { roll: ghost.roll, pitch: ghost.pitch } : null;
 
-  // 깜빡이기: 고스트를 켰다 껐다 하면 어긋난 곳이 눈에 잘 띈다
+  const aspect = ratioValue(project.ratio);
+  const frame = area ? fitSize(area.width, area.height, aspect) : null;
+  const grid = useMemo(() => gridSize(LIVE_GRID_W, aspect), [aspect]);
+
+  // ── 카메라 출력 ─────────────────────────────────────────────
+  const photoOutput = usePhotoOutput({
+    targetResolution: CommonResolutions.UHD_4_3,
+    containerFormat: 'jpeg',
+    quality: 0.95,
+  });
+
+  // ── 배경 비교 ──────────────────────────────────────────────
+  // 고스트 사진을 작은 윤곽선 격자로 만들어 두고, 카메라 스레드가 프레임마다 비교한다.
+  const [ghostModel, setGhostModel] = useState<MatchModel | null>(null);
+  useEffect(() => {
+    setGhostModel(null);
+    if (!ghostUri) return;
+    let cancelled = false;
+    loadGray(ghostUri, grid.w, grid.h)
+      .then((g) => !cancelled && setGhostModel(buildModel(g)))
+      .catch((e) => console.warn('고스트 분석 실패', e));
+    return () => {
+      cancelled = true;
+    };
+  }, [ghostUri, grid.w, grid.h]);
+
+  const [match, setMatch] = useState<(MatchResult & { at: number }) | null>(null);
+  const onMatch = useCallback((m: MatchResult) => setMatch({ ...m, at: Date.now() }), []);
+  useEffect(() => setMatch(null), [ghostModel]);
+
+  const onFrame = useCallback(
+    (f: Frame) => {
+      'worklet';
+      try {
+        if (ghostModel == null) return;
+        // 프레임마다 하면 배터리만 먹으니 LIVE_INTERVAL_MS에 한 번
+        const g = globalThis as unknown as { __ghostLast?: number };
+        const now = Date.now();
+        if (now - (g.__ghostLast ?? 0) < LIVE_INTERVAL_MS) return;
+        g.__ghostLast = now;
+
+        let gray: number[];
+        if (f.isPlanar) {
+          // YUV: 첫 평면(Y)이 곧 흑백 밝기
+          const y = f.getPlanes()[0];
+          gray = sampleGray(
+            new Uint8Array(y.getPixelBuffer()),
+            y.width,
+            y.height,
+            y.bytesPerRow,
+            1,
+            0,
+            f.orientation,
+            f.isMirrored,
+            aspect,
+            grid.w,
+            grid.h,
+          );
+        } else {
+          // BGRA 등: 초록 값을 밝기 대신 쓴다
+          gray = sampleGray(
+            new Uint8Array(f.getPixelBuffer()),
+            f.width,
+            f.height,
+            f.bytesPerRow,
+            4,
+            1,
+            f.orientation,
+            f.isMirrored,
+            aspect,
+            grid.w,
+            grid.h,
+          );
+        }
+        const result = estimate(buildModel({ w: grid.w, h: grid.h, data: gray }), ghostModel);
+        scheduleOnRN(onMatch, result);
+      } finally {
+        f.dispose();
+      }
+    },
+    [ghostModel, aspect, grid.w, grid.h, onMatch],
+  );
+
+  const frameOutput = useFrameOutput({
+    targetResolution: CommonResolutions.VGA_4_3,
+    pixelFormat: 'yuv',
+    // 프레임을 바로 세워서 받는다 (미리보기와 같은 방향)
+    enablePhysicalBufferRotation: true,
+    onFrame,
+    onFrameDropped: () => {},
+  });
+
+  const now = Date.now();
+  const liveMatch = match && now - match.at < MATCH_STALE_MS ? match : null;
+  const guide = liveMatch ? guideFrom(liveMatch) : null;
+  const guideLines = guideText(guide);
+
+  // ── 깜빡이기 ───────────────────────────────────────────────
   const blink = mode === 'blink' && !review;
   useEffect(() => {
     if (!blink) {
@@ -67,9 +193,12 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
     return () => clearInterval(t);
   }, [blink]);
 
-  // 맞으면 자동 촬영: 기울기가 맞은 상태를 HOLD_MS 동안 유지하면 찍는다.
+  // ── 맞으면 자동 촬영 ────────────────────────────────────────
+  // 기울기가 맞고, 고스트가 있으면 배경도 맞은 상태를 HOLD_MS 동안 유지하면 찍는다.
   // 한 번 찍고 나면 한 번 어긋났다가 다시 맞춰야 또 찍힌다 (다시 찍기 직후 바로 찍히지 않게).
-  const aligned = isAligned(tilt, ghostTilt);
+  const tiltOk = isAligned(tilt, ghostTilt);
+  const backgroundOk = !ghost || isMatched(liveMatch);
+  const aligned = tiltOk && backgroundOk;
   const alignedSince = useRef<number | null>(null);
   const armed = useRef(true);
   useEffect(() => {
@@ -80,12 +209,12 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
       setHoldProgress(0);
       return;
     }
-    const now = Date.now();
+    const t = Date.now();
     if (alignedSince.current == null) {
-      alignedSince.current = now;
+      alignedSince.current = t;
       Haptics.selectionAsync().catch(() => {});
     }
-    const p = (now - alignedSince.current) / HOLD_MS;
+    const p = (t - alignedSince.current) / HOLD_MS;
     if (p >= 1) {
       alignedSince.current = null;
       armed.current = false;
@@ -97,10 +226,7 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
     }
     // takePicture는 매번 새로 만들어지지만 여기서는 최신 것을 부르면 된다
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tilt, aligned, auto, ready, busy, review]);
-
-  const aspect = ratioValue(project.ratio);
-  const frame = area ? fitSize(area.width, area.height, aspect) : null;
+  }, [tilt, match, aligned, auto, ready, busy, review]);
 
   function onAreaLayout(e: LayoutChangeEvent) {
     const { width, height } = e.nativeEvent.layout;
@@ -108,13 +234,29 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
   }
 
   async function takePicture() {
-    if (!camera.current || !ready || busy) return;
+    if (!ready || busy) return;
     setBusy(true);
     try {
       const tiltAtShot = tilt;
-      const photo = await camera.current.takePictureAsync({ quality: 1, shutterSound: true });
-      const uri = await cropToRatio(photo.uri, photo.width, photo.height, project.ratio);
-      setReview({ uri, tilt: tiltAtShot });
+      const file = await photoOutput.capturePhotoToFile({ enableShutterSound: true }, {});
+      const uri = file.filePath.startsWith('file://') ? file.filePath : `file://${file.filePath}`;
+      const cropped = await cropToRatio(uri, project.ratio, {
+        // 사진 회전 정보가 반영되지 않았을 때를 위한 안전장치 (세로 화면 고정)
+        rotateIfLandscape: file.orientation === 'left' ? -90 : 90,
+        // 앞 카메라 미리보기는 거울처럼 보이니 저장도 똑같이
+        flip: facing === 'front' && !file.isMirrored,
+      });
+      setReview({ original: cropped.uri, aligned: null, aligning: !!ghostUri, useAligned: true, tilt: tiltAtShot });
+
+      // 찍은 뒤 자동 보정 (고스트가 있을 때만)
+      if (ghostUri) {
+        autoAlign(cropped.uri, ghostUri, cropped.width, cropped.height)
+          .then((aligned) => setReview((r) => (r && r.original === cropped.uri ? { ...r, aligned, aligning: false } : r)))
+          .catch((e) => {
+            console.warn('자동 보정 실패', e);
+            setReview((r) => (r && r.original === cropped.uri ? { ...r, aligning: false } : r));
+          });
+      }
     } catch (e) {
       console.warn('촬영 실패', e);
     } finally {
@@ -126,15 +268,14 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
     if (!review) return;
     setBusy(true);
     try {
-      await onSave(review.uri, review.tilt);
+      const uri = review.useAligned && review.aligned ? review.aligned.uri : review.original;
+      await onSave(uri, review.tilt);
     } finally {
       setBusy(false);
     }
   }
 
-  if (!permission) return <View style={styles.screen} />;
-
-  if (!permission.granted) {
+  if (!hasPermission) {
     return (
       <View style={[styles.screen, styles.centered, { paddingTop: insets.top }]}>
         <Text style={styles.permText}>같은 자리에서 다시 찍으려면{'\n'}카메라 권한이 필요해요</Text>
@@ -150,6 +291,7 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
 
   const ghostVisible = !!ghost && (!blink || blinkOn);
   const showOpacity = !!ghost && mode !== 'split';
+  const reviewUri = review ? (review.useAligned && review.aligned ? review.aligned.uri : review.original) : null;
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom + 8 }]}>
@@ -176,7 +318,10 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
           <Text style={styles.topHint}>{ghost ? '첫 사진에 맞춰 찍어요' : '첫 사진을 찍어요'}</Text>
         )}
         <Pressable
-          onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))}
+          onPress={() => {
+            setReady(false);
+            setFacing((f) => (f === 'back' ? 'front' : 'back'));
+          }}
           hitSlop={12}
           disabled={!!review}
         >
@@ -188,18 +333,22 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
       <View style={styles.area} onLayout={onAreaLayout}>
         {frame && (
           <View style={[styles.frame, frame]}>
-            <CameraView
-              ref={camera}
+            <Camera
               style={StyleSheet.absoluteFill}
-              facing={facing}
-              mirror={facing === 'front'}
-              active={!review}
-              onCameraReady={() => setReady(true)}
+              device={facing}
+              isActive={!review}
+              outputs={[photoOutput, frameOutput]}
+              resizeMode="cover"
+              mirrorMode="auto"
+              orientationSource="interface"
+              onStarted={() => setReady(true)}
+              onStopped={() => setReady(false)}
+              onError={(e) => console.warn('카메라 오류', e)}
             />
-            {review && <Image source={{ uri: review.uri }} style={StyleSheet.absoluteFill} />}
-            {ghost && mode !== 'split' && ghostVisible && (
+            {reviewUri && <Image source={{ uri: reviewUri }} style={StyleSheet.absoluteFill} />}
+            {ghostUri && mode !== 'split' && ghostVisible && (
               <Image
-                source={{ uri: shotUri(ghost) }}
+                source={{ uri: ghostUri }}
                 style={[StyleSheet.absoluteFill, { opacity: review ? reviewOpacity(opacity) : opacity }]}
                 resizeMode="cover"
                 pointerEvents="none"
@@ -207,19 +356,36 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
             )}
             {showGrid && <Grid />}
             {!review && <LevelLine tilt={tilt} />}
-            {ghost && mode === 'split' && (
+            {ghostUri && mode === 'split' && (
               <SplitGhost
-                uri={shotUri(ghost)}
+                uri={ghostUri}
                 width={frame.width}
                 height={frame.height}
                 position={splitAt}
                 onChange={setSplitAt}
               />
             )}
+
+            {/* 배경 일치도와 방향 안내 */}
+            {!review && ghost && (
+              <View pointerEvents="none" style={styles.matchBadge}>
+                <Text style={[styles.matchText, matchColor(liveMatch, backgroundOk)]}>
+                  {!ghostModel ? '배경 분석 중…' : liveMatch ? `배경 일치도 ${Math.round(liveMatch.score * 100)}%` : '배경 비교 중…'}
+                </Text>
+                {guideLines.length > 0 && <Text style={styles.guideText}>{guideLines.join('  ·  ')}</Text>}
+              </View>
+            )}
+
             {auto && !review && (
               <View pointerEvents="none" style={styles.autoBadge}>
                 <Text style={styles.autoBadgeText}>
-                  {holdProgress > 0 ? '그대로 멈춰 주세요…' : aligned ? '조금 움직였다 다시 맞춰 주세요' : '맞추면 자동으로 찍혀요'}
+                  {holdProgress > 0
+                    ? '그대로 멈춰 주세요…'
+                    : aligned
+                      ? '조금 움직였다 다시 맞춰 주세요'
+                      : !tiltOk
+                        ? '기울기를 맞추면 자동으로 찍혀요'
+                        : '배경을 맞추면 자동으로 찍혀요'}
                 </Text>
                 <View style={styles.autoTrack}>
                   <View style={[styles.autoFill, { width: `${Math.round(holdProgress * 100)}%` }]} />
@@ -273,6 +439,7 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
                   ? '경계선을 끌어 선이 이어지는지 확인해 보세요'
                   : '슬라이더를 움직여 얼마나 맞았는지 확인해 보세요'}
             </Text>
+            {ghost && <AlignRow review={review} onToggle={() => setReview((r) => r && { ...r, useAligned: !r.useAligned })} />}
             {ghost && <ModePicker mode={mode === 'blink' ? 'overlay' : mode} onChange={setMode} hideBlink />}
             {showOpacity && (
               <View style={styles.sliderRow}>
@@ -294,7 +461,7 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
               <Pressable style={styles.secondary} onPress={() => setReview(null)} disabled={busy}>
                 <Text style={styles.secondaryText}>다시 찍기</Text>
               </Pressable>
-              <Pressable style={styles.primary} onPress={save} disabled={busy}>
+              <Pressable style={styles.primary} onPress={save} disabled={busy || review.aligning}>
                 {busy ? <ActivityIndicator color="#000" /> : <Text style={styles.primaryText}>저장</Text>}
               </Pressable>
             </View>
@@ -303,6 +470,48 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
       </View>
     </View>
   );
+}
+
+/** 찍은 뒤 자동 보정 상태와 켜기/끄기 */
+function AlignRow({ review, onToggle }: { review: Review; onToggle: () => void }) {
+  if (review.aligning) {
+    return (
+      <View style={styles.alignRow}>
+        <ActivityIndicator color="#fff" size="small" />
+        <Text style={styles.alignText}>지난 사진에 맞춰 자동 보정하는 중…</Text>
+      </View>
+    );
+  }
+  const a = review.aligned;
+  if (!a) return <Text style={styles.alignText}>자동 보정할 만큼 어긋나지 않았어요</Text>;
+  const parts: string[] = [];
+  if (Math.abs(a.dx) >= 0.005) parts.push(`${a.dx > 0 ? '오른쪽' : '왼쪽'} ${pct(a.dx)}`);
+  if (Math.abs(a.dy) >= 0.005) parts.push(`${a.dy > 0 ? '아래' : '위'} ${pct(a.dy)}`);
+  if (Math.abs(a.scale - 1) >= 0.005) parts.push(`크기 ${a.scale > 1 ? '+' : '−'}${pct(a.scale - 1)}`);
+  return (
+    <View style={styles.alignRow}>
+      <Text style={styles.alignText}>
+        자동 보정 {parts.join(', ')}
+        {a.partial ? ' (일부만)' : ''}
+      </Text>
+      <Pressable onPress={onToggle} style={[styles.toggle, review.useAligned && styles.toggleOn]}>
+        <Text style={[styles.toggleText, review.useAligned && styles.toggleTextOn]}>
+          {review.useAligned ? '보정 켬' : '보정 끔'}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function pct(v: number) {
+  return `${(Math.abs(v) * 100).toFixed(1)}%`;
+}
+
+function matchColor(m: MatchResult | null, ok: boolean) {
+  if (!m) return { color: '#A1A1AA' };
+  if (ok) return { color: '#4ADE80' };
+  if (m.score >= SCORE_OK * 0.7) return { color: '#FACC15' };
+  return { color: '#F4F4F5' };
 }
 
 /** 확인 단계에서는 슬라이더 끝까지 밀면 지난 사진이 거의 다 보이게 */
@@ -365,6 +574,19 @@ const styles = StyleSheet.create({
 
   area: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   frame: { overflow: 'hidden', backgroundColor: '#111' },
+  matchBadge: {
+    position: 'absolute',
+    top: 10,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    alignItems: 'center',
+    gap: 2,
+  },
+  matchText: { fontSize: 14, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  guideText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   autoBadge: {
     position: 'absolute',
     bottom: 12,
@@ -399,7 +621,8 @@ const styles = StyleSheet.create({
   shutterPressed: { opacity: 0.6 },
   shutterInner: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#fff' },
   toggle: {
-    width: 80,
+    minWidth: 80,
+    paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
@@ -410,6 +633,8 @@ const styles = StyleSheet.create({
   toggleText: { color: '#E4E4E7', fontSize: 13 },
   toggleTextOn: { color: '#000', fontWeight: '600' },
 
+  alignRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  alignText: { color: '#D4D4D8', fontSize: 13 },
   reviewHint: { color: '#E4E4E7', fontSize: 14 },
   reviewButtons: { flexDirection: 'row', gap: 12, alignSelf: 'stretch' },
   primary: {

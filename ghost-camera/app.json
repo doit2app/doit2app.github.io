@@ -8,7 +8,10 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.doit2.ghostcamera"
+      "bundleIdentifier": "com.doit2.ghostcamera",
+      "infoPlist": {
+        "NSCameraUsageDescription": "지난 사진과 같은 자리에서 다시 찍으려면 카메라가 필요해요."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -18,20 +21,16 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.doit2.ghostcamera"
+      "package": "com.doit2.ghostcamera",
+      "permissions": [],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "지난 사진과 같은 자리에서 다시 찍으려면 카메라가 필요해요.",
-          "microphonePermission": false,
-          "recordAudioAndroid": false
-        }
-      ],
       [
         "expo-image-picker",
         {
@@ -39,7 +38,14 @@
           "cameraPermission": false,
           "microphonePermission": false
         }
-      ]
-    ]
+      ],
+      "expo-build-properties"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "f50c07f4-4781-4592-a301-6cadc55a9cf8"
+      }
+    },
+    "owner": "epww1502"
   }
 }

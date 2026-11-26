@@ -9,7 +9,7 @@ import { Project, shotUri } from '../storage';
 type Props = {
   project: Project;
   onOpenCamera: () => void;
-  onImport: (uri: string, width: number, height: number) => Promise<void>;
+  onImport: (uri: string) => Promise<void>;
   onDelete: (id: string) => void;
   onRatio: (r: Ratio) => void;
 };
@@ -44,7 +44,7 @@ export function HomeScreen({ project, onOpenCamera, onImport, onDelete, onRatio 
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
     if (res.canceled || !res.assets[0]) return;
     const a = res.assets[0];
-    await onImport(a.uri, a.width, a.height);
+    await onImport(a.uri);
   }
 
   function confirmDelete(id: string) {

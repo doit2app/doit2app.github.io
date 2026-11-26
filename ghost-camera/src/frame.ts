@@ -17,6 +17,7 @@ export type Rect = { originX: number; originY: number; width: number; height: nu
 
 /** 사진(width×height)에서 aspect(가로÷세로) 비율로 가운데를 잘라낼 영역 */
 export function centerCrop(width: number, height: number, aspect: number): Rect {
+  'worklet';
   const photoAspect = width / height;
   if (photoAspect > aspect) {
     // 사진이 더 넓다 → 좌우를 자른다

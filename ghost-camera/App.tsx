@@ -31,10 +31,10 @@ export default function App() {
         <HomeScreen
           project={project}
           onOpenCamera={() => setScreen('camera')}
-          onImport={async (uri, w, h) => {
+          onImport={async (uri) => {
             try {
-              const cropped = await cropToRatio(uri, w, h, project.ratio);
-              setProject(await addShot(project, cropped, null));
+              const cropped = await cropToRatio(uri, project.ratio);
+              setProject(await addShot(project, cropped.uri, null));
             } catch (e) {
               Alert.alert('사진을 불러오지 못했어요', String(e));
             }
