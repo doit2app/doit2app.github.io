@@ -11,7 +11,8 @@
       "bundleIdentifier": "com.doit2.keepit2",
       "infoPlist": {
         "NSCameraUsageDescription": "지난 사진과 같은 자리에서 다시 찍으려면 카메라가 필요해요."
-      }
+      },
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
@@ -27,7 +28,8 @@
       ],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO"
-      ]
+      ],
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png"
