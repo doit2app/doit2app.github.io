@@ -20,19 +20,26 @@ import { fitSize, ratioValue } from '../frame';
 import { sampleGray } from '../frameSample';
 import { gridSize, loadGray } from '../grayImage';
 import { buildModel, estimate, guideFrom, guideText, isMatched, MatchModel, MatchResult, SCORE_OK } from '../match';
-import { cropToRatio, Project, Shot, shotUri } from '../storage';
+import type { Facing, Project, Shot } from '../data/db';
+import { shotUri } from '../data/files';
+import { cropToRatio } from '../photo';
 import { Tilt, useTilt } from '../useTilt';
 
 type GhostSource = 'first' | 'previous';
 /** 고스트 보이는 방식: 반투명 겹치기 / 켰다 껐다 / 반반 나눠 보기 */
 type GhostMode = 'overlay' | 'blink' | 'split';
-type Facing = 'back' | 'front';
 
 const MODES: { key: GhostMode; label: string }[] = [
   { key: 'overlay', label: '겹치기' },
   { key: 'blink', label: '깜빡이기' },
   { key: 'split', label: '반반' },
 ];
+
+/**
+ * 맞으면 자동 촬영. MVP에서는 끄고(직접 찍기), 다 맞으면 셔터가 초록색이 되고 진동이 온다.
+ * 나중에 설정 옵션으로 되살릴 수 있게 코드는 남겨 둔다.
+ */
+const ENABLE_AUTO_CAPTURE = false;
 
 /** 실시간 비교용 격자 가로 칸 수 (작을수록 빠르다) */
 const LIVE_GRID_W = 32;
@@ -43,8 +50,9 @@ const MATCH_STALE_MS = 1000;
 
 type Props = {
   project: Project;
+  shots: Shot[];
   onClose: () => void;
-  onSave: (tempUri: string, tilt: Tilt | null) => Promise<void>;
+  onSave: (tempUri: string, meta: { tilt: Tilt | null; facing: Facing }) => Promise<void>;
 };
 
 type Review = {
@@ -55,9 +63,10 @@ type Review = {
   aligning: boolean;
   useAligned: boolean;
   tilt: Tilt | null;
+  facing: Facing;
 };
 
-export function CameraScreen({ project, onClose, onSave }: Props) {
+export function CameraScreen({ project, shots, onClose, onSave }: Props) {
   const insets = useSafeAreaInsets();
   const { hasPermission, requestPermission } = useCameraPermission();
 
@@ -79,7 +88,6 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
 
   const tilt = useTilt(!review);
 
-  const shots = project.shots;
   const ghost: Shot | undefined = source === 'first' ? shots[0] : shots[shots.length - 1];
   const ghostUri = ghost ? shotUri(ghost) : null;
   const ghostTilt: Tilt | null =
@@ -203,7 +211,7 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
   const armed = useRef(true);
   useEffect(() => {
     if (!aligned) armed.current = true;
-    const canShoot = auto && aligned && armed.current && ready && !busy && !review;
+    const canShoot = ENABLE_AUTO_CAPTURE && auto && aligned && armed.current && ready && !busy && !review;
     if (!canShoot) {
       alignedSince.current = null;
       setHoldProgress(0);
@@ -228,6 +236,20 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tilt, match, aligned, auto, ready, busy, review]);
 
+  // 직접 찍기: 다 맞는 순간 한 번 진동으로 알려 준다
+  const wasAligned = useRef(false);
+  useEffect(() => {
+    if (review) {
+      wasAligned.current = false;
+      return;
+    }
+    if (aligned && !wasAligned.current && ghost) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+    wasAligned.current = aligned;
+  }, [aligned, review, ghost]);
+  const readyToShoot = aligned && !!ghost;
+
   function onAreaLayout(e: LayoutChangeEvent) {
     const { width, height } = e.nativeEvent.layout;
     setArea({ width, height });
@@ -246,7 +268,14 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
         // 앞 카메라 미리보기는 거울처럼 보이니 저장도 똑같이
         flip: facing === 'front' && !file.isMirrored,
       });
-      setReview({ original: cropped.uri, aligned: null, aligning: !!ghostUri, useAligned: true, tilt: tiltAtShot });
+      setReview({
+        original: cropped.uri,
+        aligned: null,
+        aligning: !!ghostUri,
+        useAligned: true,
+        tilt: tiltAtShot,
+        facing,
+      });
 
       // 찍은 뒤 자동 보정 (고스트가 있을 때만)
       if (ghostUri) {
@@ -269,7 +298,7 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
     setBusy(true);
     try {
       const uri = review.useAligned && review.aligned ? review.aligned.uri : review.original;
-      await onSave(uri, review.tilt);
+      await onSave(uri, { tilt: review.tilt, facing: review.facing });
     } finally {
       setBusy(false);
     }
@@ -376,7 +405,7 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
               </View>
             )}
 
-            {auto && !review && (
+            {ENABLE_AUTO_CAPTURE && auto && !review && (
               <View pointerEvents="none" style={styles.autoBadge}>
                 <Text style={styles.autoBadgeText}>
                   {holdProgress > 0
@@ -423,11 +452,27 @@ export function CameraScreen({ project, onClose, onSave }: Props) {
               <Pressable
                 onPress={takePicture}
                 disabled={!ready || busy}
-                style={({ pressed }) => [styles.shutter, (pressed || busy) && styles.shutterPressed]}
+                style={({ pressed }) => [
+                  styles.shutter,
+                  readyToShoot && styles.shutterReady,
+                  (pressed || busy) && styles.shutterPressed,
+                ]}
               >
-                {busy ? <ActivityIndicator color="#000" /> : <View style={styles.shutterInner} />}
+                {busy ? (
+                  <ActivityIndicator color="#000" />
+                ) : (
+                  <View style={[styles.shutterInner, readyToShoot && styles.shutterInnerReady]} />
+                )}
               </Pressable>
-              <Toggle label="자동 촬영" on={auto} onPress={() => setAuto((v) => !v)} disabled={!tilt} />
+              {ENABLE_AUTO_CAPTURE ? (
+                <Toggle label="자동 촬영" on={auto} onPress={() => setAuto((v) => !v)} disabled={!tilt} />
+              ) : (
+                <View style={styles.readyHint}>
+                  <Text style={[styles.readyHintText, readyToShoot && styles.readyHintOn]}>
+                    {!ghost ? '' : readyToShoot ? '지금 찍으세요' : tiltOk ? '배경 맞추는 중' : '기울기 맞추는 중'}
+                  </Text>
+                </View>
+              )}
             </View>
           </>
         ) : (
@@ -620,6 +665,11 @@ const styles = StyleSheet.create({
   },
   shutterPressed: { opacity: 0.6 },
   shutterInner: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#fff' },
+  shutterReady: { borderColor: '#4ADE80' },
+  shutterInnerReady: { backgroundColor: '#4ADE80' },
+  readyHint: { width: 80, alignItems: 'center' },
+  readyHintText: { color: '#A1A1AA', fontSize: 12, textAlign: 'center' },
+  readyHintOn: { color: '#4ADE80', fontWeight: '700' },
   toggle: {
     minWidth: 80,
     paddingHorizontal: 10,
