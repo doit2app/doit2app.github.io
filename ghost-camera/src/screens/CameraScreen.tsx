@@ -355,7 +355,7 @@ export function CameraScreen({ project, shots, onClose, onSave }: Props) {
         >
           <Text style={styles.primaryText}>카메라 허용하기</Text>
         </Pressable>
-        <Text style={styles.permHint}>허용 창이 뜨지 않으면 휴대폰 설정에서 그자리 앱의 카메라를 켜 주세요.</Text>
+        <Text style={styles.permHint}>허용 창이 뜨지 않으면 휴대폰 설정에서 킵잇투 앱의 카메라를 켜 주세요.</Text>
         <Pressable onPress={() => Linking.openSettings()} style={styles.textButton}>
           <Text style={styles.textButtonLabel}>설정 열기</Text>
         </Pressable>

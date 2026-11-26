@@ -65,7 +65,7 @@ export default function PaywallScreen() {
     <View style={[styles.screen, { paddingBottom: insets.bottom + 12 }]}>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
         <Text style={styles.title}>
-          {reason === 'projects' ? `무료로는 프로젝트를 ${FREE_PROJECTS}개까지 만들 수 있어요` : '그자리 평생 이용권'}
+          {reason === 'projects' ? `무료로는 프로젝트를 ${FREE_PROJECTS}개까지 만들 수 있어요` : '킵잇투 평생 이용권'}
         </Text>
         <Text style={styles.sub}>한 번 결제하면 계속 써요.</Text>
         <Card style={{ gap: 14, marginTop: 8 }}>

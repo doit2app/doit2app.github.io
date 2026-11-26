@@ -1,7 +1,7 @@
 // 평생 이용권 (일회 구매). RevenueCat으로 처리한다.
 //
 // 준비할 것 (README 참고):
-// - 앱스토어·플레이스토어에 비소모성 상품(예: geujari_pro_lifetime)을 만든다
+// - 앱스토어·플레이스토어에 비소모성 상품(예: keepit2_pro_lifetime)을 만든다
 // - RevenueCat에 앱을 연결하고, 권한(entitlement) "pro"와 기본 오퍼링에 "Lifetime" 패키지를 만든다
 // - API 키를 환경 변수로 넣는다: EXPO_PUBLIC_RC_IOS_KEY, EXPO_PUBLIC_RC_ANDROID_KEY
 //

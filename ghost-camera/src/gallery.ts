@@ -4,7 +4,7 @@
 import { Album, Asset, requestPermissionsAsync } from 'expo-media-library';
 
 export function albumName(projectName: string) {
-  return `그자리 · ${projectName}`;
+  return `킵잇투 · ${projectName}`;
 }
 
 /** 저장했으면 true */

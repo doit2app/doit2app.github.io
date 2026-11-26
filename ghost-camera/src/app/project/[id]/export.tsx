@@ -24,7 +24,7 @@ const SPEEDS = [
   { fps: 12, label: '아주 빠르게' },
 ];
 const HOLD_LAST = 1.5;
-const WATERMARK = '그자리 앱으로 찍음';
+const WATERMARK = '킵잇투로 간직한 순간';
 
 function even(n: number) {
   return Math.max(2, Math.round(n / 2) * 2);
@@ -57,7 +57,7 @@ export default function ExportScreen() {
     setResult(null);
     setProgress(0);
     try {
-      const out = new File(Paths.cache, `geujari-${project!.id}-${Date.now()}.mp4`);
+      const out = new File(Paths.cache, `keepit2-${project!.id}-${Date.now()}.mp4`);
       const uri = await exportTimelapse(
         {
           frames: shots.map((s) => ({ uri: shotUri(s), label: showDate ? formatDate(s.takenAt) : null })),

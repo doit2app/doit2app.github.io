@@ -119,7 +119,7 @@ export default function SettingsScreen() {
       </Card>
 
       <View style={{ alignItems: 'center', marginTop: 32 }}>
-        <Text style={styles.version}>그자리 {Constants.expoConfig?.version ?? ''}</Text>
+        <Text style={styles.version}>킵잇투 {Constants.expoConfig?.version ?? ''}</Text>
       </View>
     </ScrollView>
   );

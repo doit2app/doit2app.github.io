@@ -15,7 +15,7 @@ import { albumName, saveToGallery } from '../../../gallery';
 import { usePro } from '../../../pro';
 import { Button, C, Chip, ChipRow, formatDate } from '../../../ui';
 
-const WATERMARK = '그자리';
+const WATERMARK = '킵잇투';
 
 export default function CompareScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

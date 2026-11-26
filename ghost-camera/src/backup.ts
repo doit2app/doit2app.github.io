@@ -16,7 +16,7 @@ import { rescheduleAll } from './reminders';
 import { readZipEntries, readZipEntry, ZipWriter } from './zip';
 
 type Manifest = {
-  app: 'geujari';
+  app: 'keepit2';
   version: 1;
   exportedAt: string;
   projects: Project[];
@@ -32,9 +32,9 @@ function stamp(d = new Date()) {
 export async function exportBackup(onProgress?: (p: number) => void): Promise<number> {
   const projects = (await listProjects()).map(({ shotCount, firstShot, lastShot, ...p }) => p);
   const shots = await listAllShots();
-  const manifest: Manifest = { app: 'geujari', version: 1, exportedAt: new Date().toISOString(), projects, shots };
+  const manifest: Manifest = { app: 'keepit2', version: 1, exportedAt: new Date().toISOString(), projects, shots };
 
-  const out = new File(Paths.cache, `geujari-backup-${stamp()}.zip`);
+  const out = new File(Paths.cache, `keepit2-backup-${stamp()}.zip`);
   if (out.exists) out.delete();
   out.create();
   const handle = out.open(FileMode.WriteOnly);
@@ -55,7 +55,7 @@ export async function exportBackup(onProgress?: (p: number) => void): Promise<nu
     handle.close();
   }
 
-  await Sharing.shareAsync(out.uri, { mimeType: 'application/zip', dialogTitle: '그자리 백업 저장하기', UTI: 'public.zip-archive' });
+  await Sharing.shareAsync(out.uri, { mimeType: 'application/zip', dialogTitle: '킵잇투 백업 저장하기', UTI: 'public.zip-archive' });
   return count;
 }
 
@@ -79,9 +79,9 @@ export async function importBackup(onProgress?: (p: number) => void): Promise<Re
     };
     const entries = readZipEntries(read, size);
     const manifestEntry = entries.find((e) => e.name === 'manifest.json');
-    if (!manifestEntry) throw new Error('그자리 백업 파일이 아니에요');
+    if (!manifestEntry) throw new Error('킵잇투 백업 파일이 아니에요');
     const manifest = JSON.parse(new TextDecoder().decode(readZipEntry(read, manifestEntry))) as Manifest;
-    if (manifest.app !== 'geujari') throw new Error('그자리 백업 파일이 아니에요');
+    if (manifest.app !== 'keepit2') throw new Error('킵잇투 백업 파일이 아니에요');
 
     const byName = new Map(entries.map((e) => [e.name, e]));
     for (const p of manifest.projects) {

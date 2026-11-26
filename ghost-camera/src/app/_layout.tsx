@@ -43,7 +43,7 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: C.bg },
         }}
       >
-        <Stack.Screen name="index" options={{ title: '그자리' }} />
+        <Stack.Screen name="index" options={{ title: '킵잇투' }} />
         <Stack.Screen name="new" options={{ title: '새 프로젝트', presentation: 'modal' }} />
         <Stack.Screen name="settings" options={{ title: '설정' }} />
         <Stack.Screen name="paywall" options={{ title: '평생 이용권', presentation: 'modal' }} />

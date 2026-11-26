@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "그자리",
+    "name": "킵잇투",
     "slug": "ghost-camera",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,7 +8,7 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.doit2.ghostcamera",
+      "bundleIdentifier": "com.doit2.keepit2",
       "infoPlist": {
         "NSCameraUsageDescription": "지난 사진과 같은 자리에서 다시 찍으려면 카메라가 필요해요."
       }
@@ -21,7 +21,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.doit2.ghostcamera",
+      "package": "com.doit2.keepit2",
       "permissions": [
         "android.permission.CAMERA"
       ],
@@ -77,6 +77,6 @@
       }
     },
     "owner": "epww1502",
-    "scheme": "geujari"
+    "scheme": "keepit2"
   }
 }

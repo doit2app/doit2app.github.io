@@ -43,7 +43,7 @@ export function getDb(): Promise<SQLite.SQLiteDatabase> {
 }
 
 async function open() {
-  const db = await SQLite.openDatabaseAsync('geujari.db');
+  const db = await SQLite.openDatabaseAsync('keepit2.db');
   await migrate(db);
   return db;
 }
