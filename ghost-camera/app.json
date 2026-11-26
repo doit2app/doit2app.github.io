@@ -1,0 +1,84 @@
+{
+  "expo": {
+    "name": "킵잇투",
+    "slug": "ghost-camera",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.doit2.keepit2",
+      "infoPlist": {
+        "NSCameraUsageDescription": "지난 사진과 같은 자리에서 다시 찍으려면 카메라가 필요해요."
+      },
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F98B62",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.doit2.keepit2",
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "versionCode": 1
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "예전에 찍은 사진을 첫 사진으로 불러오려면 사진 보관함 접근이 필요해요.",
+          "cameraPermission": "지난 사진과 같은 자리에서 다시 찍으려면 카메라가 필요해요.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-build-properties",
+      "expo-router",
+      "expo-sqlite",
+      "expo-sharing",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "찍은 사진을 사진첩에도 저장해 두려면 사진 보관함 접근이 필요해요.",
+          "savePhotosPermission": "찍은 사진과 타임랩스 영상을 사진첩에 저장해요.",
+          "isAccessMediaLocationEnabled": false,
+          "granularPermissions": [
+            "photo",
+            "video"
+          ]
+        }
+      ],
+      [
+        "expo-notifications",
+        {}
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220,
+          "backgroundColor": "#FDE7D3",
+          "resizeMode": "contain"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "f50c07f4-4781-4592-a301-6cadc55a9cf8"
+      }
+    },
+    "owner": "epww1502",
+    "scheme": "keepit2"
+  }
+}

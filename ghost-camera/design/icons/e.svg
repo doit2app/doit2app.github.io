@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#FDE7D3"/>
+  <!-- 뒤: 예전 사진 (빛바랜 세피아, 살짝 기울어짐) -->
+  <g transform="rotate(-10 430 470)">
+    <rect x="200" y="200" width="440" height="520" rx="22" fill="#F5EEE3"/>
+    <rect x="236" y="236" width="368" height="368" rx="8" fill="#D9C7A6"/>
+    <path d="M236 520 q184 -70 368 0 v84 h-368z" fill="#BBA27A"/>
+    <rect x="412" y="452" width="16" height="60" fill="#8C7552"/>
+    <circle cx="420" cy="440" r="34" fill="#A88E64"/>
+  </g>
+  <!-- 앞: 지금 사진 (선명한 색, 나무가 자람) -->
+  <g transform="rotate(7 600 560)">
+    <rect x="380" y="300" width="440" height="520" rx="22" fill="#FFFFFF"/>
+    <rect x="416" y="336" width="368" height="368" rx="8" fill="#BAE6FD"/>
+    <circle cx="720" cy="400" r="30" fill="#FDBA74"/>
+    <path d="M416 620 q184 -70 368 0 v84 h-368z" fill="#4ADE80"/>
+    <rect x="590" y="500" width="22" height="110" fill="#92400E"/>
+    <circle cx="601" cy="470" r="86" fill="#22C55E"/>
+    <circle cx="560" cy="500" r="50" fill="#16A34A"/>
+  </g>
+</svg>
