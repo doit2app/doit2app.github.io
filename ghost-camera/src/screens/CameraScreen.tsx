@@ -1,7 +1,19 @@
 import Slider from '@react-native-community/slider';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, LayoutChangeEvent, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  LayoutChangeEvent,
+  Linking,
+  PermissionsAndroid,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Camera,
@@ -68,7 +80,36 @@ type Review = {
 
 export function CameraScreen({ project, shots, onClose, onSave }: Props) {
   const insets = useSafeAreaInsets();
-  const { hasPermission, requestPermission, canRequestPermission } = useCameraPermission();
+  const cameraPermission = useCameraPermission();
+  // 허용한 직후 바로 화면이 바뀌게 결과를 따로 기억한다
+  const [grantedNow, setGrantedNow] = useState(false);
+  const hasPermission = cameraPermission.hasPermission || grantedNow;
+
+  async function askCameraPermission() {
+    try {
+      if (Platform.OS === 'android') {
+        const r = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
+        if (r === PermissionsAndroid.RESULTS.GRANTED) setGrantedNow(true);
+        // 다시 묻지 않기를 골랐으면 앱에서 물을 수 없어서 설정 화면으로
+        else if (r === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) Linking.openSettings();
+      } else if (cameraPermission.canRequestPermission) {
+        if (await cameraPermission.requestPermission()) setGrantedNow(true);
+      } else {
+        Linking.openSettings();
+      }
+    } catch (e) {
+      Alert.alert('카메라 권한을 요청하지 못했어요', String(e));
+    }
+  }
+
+  // 카메라 화면에 처음 들어오면 바로 물어본다
+  const askedOnce = useRef(false);
+  useEffect(() => {
+    if (hasPermission || askedOnce.current) return;
+    askedOnce.current = true;
+    askCameraPermission();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasPermission]);
 
   const [facing, setFacing] = useState<Facing>('back');
   const [ready, setReady] = useState(false);
@@ -309,14 +350,14 @@ export function CameraScreen({ project, shots, onClose, onSave }: Props) {
       <View style={[styles.screen, styles.centered, { paddingTop: insets.top }]}>
         <Text style={styles.permText}>같은 자리에서 다시 찍으려면{'\n'}카메라 권한이 필요해요</Text>
         <Pressable
-          style={styles.permButton}
-          onPress={() => {
-            // 한 번 거절하면 앱에서 다시 물을 수 없어서 설정 화면으로 보낸다
-            if (canRequestPermission) requestPermission();
-            else Linking.openSettings();
-          }}
+          style={({ pressed }) => [styles.permButton, pressed && { opacity: 0.6 }]}
+          onPress={askCameraPermission}
         >
-          <Text style={styles.primaryText}>{canRequestPermission ? '권한 허용하기' : '설정에서 카메라 허용하기'}</Text>
+          <Text style={styles.primaryText}>카메라 허용하기</Text>
+        </Pressable>
+        <Text style={styles.permHint}>허용 창이 뜨지 않으면 휴대폰 설정에서 그자리 앱의 카메라를 켜 주세요.</Text>
+        <Pressable onPress={() => Linking.openSettings()} style={styles.textButton}>
+          <Text style={styles.textButtonLabel}>설정 열기</Text>
         </Pressable>
         <Pressable onPress={onClose} style={styles.textButton}>
           <Text style={styles.textButtonLabel}>돌아가기</Text>
@@ -722,6 +763,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 8,
   },
+  permHint: { color: '#A1A1AA', fontSize: 13, textAlign: 'center', lineHeight: 19 },
   textButton: { padding: 8 },
   textButtonLabel: { color: '#A1A1AA', fontSize: 15 },
 });
