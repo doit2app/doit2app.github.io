@@ -15,6 +15,8 @@ struct ExportOptions: Record {
   @Field var fps: Double = 4
   @Field var holdLastSeconds: Double = 1
   @Field var watermark: String? = nil
+  /// "plain": 흰 굵은 글자 왼쪽 아래 / "film": 주황색 필름 날짜 도장 오른쪽 아래
+  @Field var labelStyle: String = "plain"
 }
 
 enum TimelapseError: Error, CustomStringConvertible {
@@ -81,7 +83,7 @@ public class TimelapseModule: Module {
     for (i, frame) in o.frames.enumerated() {
       guard let image = loadImage(frame.uri) else { continue }
       guard let pb = makeBuffer(adaptor: adaptor, width: w, height: h, draw: { ctx in
-        self.drawFrame(ctx: ctx, image: image, width: w, height: h, label: frame.label, watermark: o.watermark)
+        self.drawFrame(ctx: ctx, image: image, width: w, height: h, label: frame.label, watermark: o.watermark, film: o.labelStyle == "film")
       }) else { continue }
       try append(adaptor: adaptor, input: input, buffer: pb, seconds: t, timescale: timescale)
       last = pb
@@ -169,7 +171,7 @@ public class TimelapseModule: Module {
     return buffer
   }
 
-  private func drawFrame(ctx: CGContext, image: UIImage, width: Int, height: Int, label: String?, watermark: String?) {
+  private func drawFrame(ctx: CGContext, image: UIImage, width: Int, height: Int, label: String?, watermark: String?, film: Bool) {
     let W = CGFloat(width)
     let H = CGFloat(height)
     UIColor.black.setFill()
@@ -192,14 +194,31 @@ public class TimelapseModule: Module {
 
     let margin = W * 0.04
     if let label = label, !label.isEmpty {
-      let attrs: [NSAttributedString.Key: Any] = [
-        .font: UIFont.systemFont(ofSize: H * 0.04, weight: .bold),
-        .foregroundColor: UIColor.white,
-        .shadow: shadow,
-      ]
-      let s = label as NSString
-      let size = s.size(withAttributes: attrs)
-      s.draw(at: CGPoint(x: margin, y: H - margin - size.height), withAttributes: attrs)
+      if film {
+        // 옛날 필름 카메라 날짜 도장: 주황색 고정폭 글자에 번지는 빛
+        let glow = NSShadow()
+        glow.shadowColor = UIColor(red: 1, green: 0.47, blue: 0.08, alpha: 0.9)
+        glow.shadowOffset = .zero
+        glow.shadowBlurRadius = H * 0.012
+        let attrs: [NSAttributedString.Key: Any] = [
+          .font: UIFont.monospacedSystemFont(ofSize: H * 0.038, weight: .bold),
+          .foregroundColor: UIColor(red: 1, green: 0.62, blue: 0.26, alpha: 1),
+          .shadow: glow,
+          .kern: H * 0.004,
+        ]
+        let s = label as NSString
+        let size = s.size(withAttributes: attrs)
+        s.draw(at: CGPoint(x: W - margin - size.width, y: H - margin - size.height), withAttributes: attrs)
+      } else {
+        let attrs: [NSAttributedString.Key: Any] = [
+          .font: UIFont.systemFont(ofSize: H * 0.04, weight: .bold),
+          .foregroundColor: UIColor.white,
+          .shadow: shadow,
+        ]
+        let s = label as NSString
+        let size = s.size(withAttributes: attrs)
+        s.draw(at: CGPoint(x: margin, y: H - margin - size.height), withAttributes: attrs)
+      }
     }
     if let wm = watermark, !wm.isEmpty {
       let attrs: [NSAttributedString.Key: Any] = [
@@ -209,7 +228,9 @@ public class TimelapseModule: Module {
       ]
       let s = wm as NSString
       let size = s.size(withAttributes: attrs)
-      s.draw(at: CGPoint(x: W - margin - size.width, y: H - margin - size.height), withAttributes: attrs)
+      // 필름 날짜가 오른쪽 아래에 있으면 워터마크는 오른쪽 위로
+      let y = film ? margin : H - margin - size.height
+      s.draw(at: CGPoint(x: W - margin - size.width, y: y), withAttributes: attrs)
     }
   }
 }

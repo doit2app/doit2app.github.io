@@ -51,6 +51,10 @@ class ExportOptions : Record {
 
   @Field
   val watermark: String? = null
+
+  /** "plain": 흰 굵은 글자 왼쪽 아래 / "film": 주황색 필름 날짜 도장 오른쪽 아래 */
+  @Field
+  val labelStyle: String = "plain"
 }
 
 /**
@@ -104,7 +108,7 @@ class TimelapseModule : Module() {
       val n = o.frames.size
       for ((i, frame) in o.frames.withIndex()) {
         val src = decode(pathOf(frame.uri), w, h) ?: continue
-        drawFrame(canvas, src, w, h, frame.label, o.watermark)
+        drawFrame(canvas, src, w, h, frame.label, o.watermark, o.labelStyle == "film")
         src.recycle()
         canvasBitmap.getPixels(pixels, 0, w, 0, 0, w, h)
         queueFrame(codec, muxer, state, pixels, w, h, t)
@@ -242,7 +246,7 @@ class TimelapseModule : Module() {
     return BitmapFactory.decodeFile(path, opts)
   }
 
-  private fun drawFrame(canvas: Canvas, src: Bitmap, w: Int, h: Int, label: String?, watermark: String?) {
+  private fun drawFrame(canvas: Canvas, src: Bitmap, w: Int, h: Int, label: String?, watermark: String?, film: Boolean) {
     canvas.drawColor(Color.BLACK)
     val scale = max(w.toFloat() / src.width, h.toFloat() / src.height)
     val dw = src.width * scale
@@ -252,13 +256,26 @@ class TimelapseModule : Module() {
 
     val margin = w * 0.04f
     if (!label.isNullOrEmpty()) {
-      val p = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
-        textSize = h * 0.04f
-        typeface = Typeface.DEFAULT_BOLD
-        setShadowLayer(4f, 0f, 2f, 0x99000000.toInt())
+      if (film) {
+        // 옛날 필름 카메라 날짜 도장: 주황색 고정폭 글자에 번지는 빛
+        val p = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+          color = Color.rgb(255, 159, 67)
+          textSize = h * 0.038f
+          typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+          letterSpacing = 0.08f
+          setShadowLayer(h * 0.012f, 0f, 0f, Color.argb(230, 255, 120, 20))
+        }
+        val tw = p.measureText(label)
+        canvas.drawText(label, w - margin - tw, h - margin - p.descent(), p)
+      } else {
+        val p = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+          color = Color.WHITE
+          textSize = h * 0.04f
+          typeface = Typeface.DEFAULT_BOLD
+          setShadowLayer(4f, 0f, 2f, 0x99000000.toInt())
+        }
+        canvas.drawText(label, margin, h - margin - p.descent(), p)
       }
-      canvas.drawText(label, margin, h - margin - p.descent(), p)
     }
     if (!watermark.isNullOrEmpty()) {
       val p = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -268,7 +285,9 @@ class TimelapseModule : Module() {
         setShadowLayer(4f, 0f, 2f, 0x99000000.toInt())
       }
       val tw = p.measureText(watermark)
-      canvas.drawText(watermark, w - margin - tw, h - margin - p.descent(), p)
+      // 필름 날짜가 오른쪽 아래에 있으면 워터마크는 오른쪽 위로
+      val y = if (film) margin - p.ascent() else h - margin - p.descent()
+      canvas.drawText(watermark, w - margin - tw, y, p)
     }
   }
 }

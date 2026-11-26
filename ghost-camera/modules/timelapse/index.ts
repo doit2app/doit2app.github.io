@@ -22,6 +22,8 @@ export type TimelapseOptions = {
   holdLastSeconds: number;
   /** 오른쪽 아래 워터마크 (무료 버전). 없으면 그리지 않는다 */
   watermark?: string | null;
+  /** 'plain': 흰 굵은 글자 왼쪽 아래 / 'film': 주황색 필름 날짜 도장 오른쪽 아래 */
+  labelStyle?: 'plain' | 'film';
 };
 
 type TimelapseNative = {

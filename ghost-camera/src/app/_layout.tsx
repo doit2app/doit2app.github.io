@@ -50,6 +50,7 @@ export default function RootLayout() {
         <Stack.Screen name="project/[id]/index" options={{ title: '' }} />
         <Stack.Screen name="project/[id]/camera" options={{ headerShown: false, animation: 'fade' }} />
         <Stack.Screen name="project/[id]/edit" options={{ title: '프로젝트 설정', presentation: 'modal' }} />
+        <Stack.Screen name="project/[id]/film" options={{ title: '' }} />
         <Stack.Screen name="project/[id]/compare" options={{ title: '전후 비교' }} />
         <Stack.Screen name="project/[id]/export" options={{ title: '타임랩스 만들기' }} />
         <Stack.Screen name="project/[id]/shot/[shotId]" options={{ title: '' }} />

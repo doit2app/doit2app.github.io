@@ -15,6 +15,7 @@ import { useData } from '../../../data/store';
 import { ratioValue } from '../../../frame';
 import { albumName, saveToGallery } from '../../../gallery';
 import { FREE_EXPORT_LONG_EDGE, PRO_EXPORT_LONG_EDGE, usePro } from '../../../pro';
+import { filmDate } from '../../../components/FilmFrame';
 import { Button, C, Card, Chip, ChipRow, formatDate, Label } from '../../../ui';
 
 const SPEEDS = [
@@ -40,7 +41,7 @@ export default function ExportScreen() {
   }, [id]);
 
   const [fps, setFps] = useState(4);
-  const [showDate, setShowDate] = useState(true);
+  const [dateStyle, setDateStyle] = useState<'film' | 'plain' | 'none'>('film');
   const [progress, setProgress] = useState<number | null>(null);
   const [result, setResult] = useState<string | null>(null);
 
@@ -60,7 +61,11 @@ export default function ExportScreen() {
       const out = new File(Paths.cache, `keepit2-${project!.id}-${Date.now()}.mp4`);
       const uri = await exportTimelapse(
         {
-          frames: shots.map((s) => ({ uri: shotUri(s), label: showDate ? formatDate(s.takenAt) : null })),
+          frames: shots.map((s) => ({
+            uri: shotUri(s),
+            label: dateStyle === 'none' ? null : dateStyle === 'film' ? filmDate(s.takenAt) : formatDate(s.takenAt),
+          })),
+          labelStyle: dateStyle === 'film' ? 'film' : 'plain',
           outputPath: out.uri,
           width: size.width,
           height: size.height,
@@ -103,8 +108,9 @@ export default function ExportScreen() {
 
         <Label>날짜 글자</Label>
         <ChipRow>
-          <Chip label="보이기" on={showDate} onPress={() => setShowDate(true)} />
-          <Chip label="숨기기" on={!showDate} onPress={() => setShowDate(false)} />
+          <Chip label="필름 날짜 도장" on={dateStyle === 'film'} onPress={() => setDateStyle('film')} />
+          <Chip label="깔끔한 날짜" on={dateStyle === 'plain'} onPress={() => setDateStyle('plain')} />
+          <Chip label="숨기기" on={dateStyle === 'none'} onPress={() => setDateStyle('none')} />
         </ChipRow>
 
         {!pro && (
