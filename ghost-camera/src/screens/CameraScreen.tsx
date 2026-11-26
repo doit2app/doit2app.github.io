@@ -1,7 +1,7 @@
 import Slider from '@react-native-community/slider';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, LayoutChangeEvent, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Camera,
@@ -68,7 +68,7 @@ type Review = {
 
 export function CameraScreen({ project, shots, onClose, onSave }: Props) {
   const insets = useSafeAreaInsets();
-  const { hasPermission, requestPermission } = useCameraPermission();
+  const { hasPermission, requestPermission, canRequestPermission } = useCameraPermission();
 
   const [facing, setFacing] = useState<Facing>('back');
   const [ready, setReady] = useState(false);
@@ -308,8 +308,15 @@ export function CameraScreen({ project, shots, onClose, onSave }: Props) {
     return (
       <View style={[styles.screen, styles.centered, { paddingTop: insets.top }]}>
         <Text style={styles.permText}>같은 자리에서 다시 찍으려면{'\n'}카메라 권한이 필요해요</Text>
-        <Pressable style={styles.primary} onPress={requestPermission}>
-          <Text style={styles.primaryText}>권한 허용하기</Text>
+        <Pressable
+          style={styles.permButton}
+          onPress={() => {
+            // 한 번 거절하면 앱에서 다시 물을 수 없어서 설정 화면으로 보낸다
+            if (canRequestPermission) requestPermission();
+            else Linking.openSettings();
+          }}
+        >
+          <Text style={styles.primaryText}>{canRequestPermission ? '권한 허용하기' : '설정에서 카메라 허용하기'}</Text>
         </Pressable>
         <Pressable onPress={onClose} style={styles.textButton}>
           <Text style={styles.textButtonLabel}>돌아가기</Text>
@@ -706,6 +713,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   secondaryText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  permButton: {
+    alignSelf: 'stretch',
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
   textButton: { padding: 8 },
   textButtonLabel: { color: '#A1A1AA', fontSize: 15 },
 });
