@@ -81,7 +81,13 @@ export default function ProjectScreen() {
         </Text>
       </View>
 
-      <View style={[styles.preview, { aspectRatio: aspect }]}>
+      <Pressable
+        disabled={!shown || playing}
+        onPress={() =>
+          shown && router.push({ pathname: '/project/[id]/shot/[shotId]', params: { id, shotId: shown.id } })
+        }
+        style={[styles.preview, { aspectRatio: aspect }]}
+      >
         {shown ? (
           <>
             <Image source={{ uri: shotUri(shown) }} style={StyleSheet.absoluteFill} />
@@ -90,7 +96,7 @@ export default function ProjectScreen() {
         ) : (
           <Text style={styles.emptyPreview}>아직 사진이 없어요</Text>
         )}
-      </View>
+      </Pressable>
 
       <Button
         label={shots.length ? '같은 자리에서 찍기' : '첫 사진 찍기'}
