@@ -1,0 +1,43 @@
+<defs>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#7C2D12" flood-opacity="0.35"/>
+  </filter>
+  <clipPath id="photo"><rect x="268" y="236" width="488" height="488" rx="14"/></clipPath>
+  <clipPath id="left"><rect x="0" y="0" width="512" height="1024"/></clipPath>
+  <clipPath id="right"><rect x="512" y="0" width="512" height="1024"/></clipPath>
+  <linearGradient id="skyNow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7CC8F2"/><stop offset="1" stop-color="#D6EEFB"/></linearGradient>
+  <linearGradient id="skyThen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D9C7A4"/><stop offset="1" stop-color="#EFE3CB"/></linearGradient>
+  <radialGradient id="vignette" cx="0.5" cy="0.5" r="0.75"><stop offset="0.55" stop-color="#5B4426" stop-opacity="0"/><stop offset="1" stop-color="#5B4426" stop-opacity="0.45"/></radialGradient>
+</defs>
+<g transform="rotate(-5 512 540)" filter="url(#shadow)">
+  <rect x="232" y="200" width="560" height="660" rx="28" fill="#FFFDF8"/>
+  <g clip-path="url(#photo)">
+    <!-- 그때: 빛바랜 사진, 작은 새싹 -->
+    <g clip-path="url(#left)">
+      <rect x="0" y="0" width="1024" height="1024" fill="url(#skyThen)"/>
+      <circle cx="660" cy="330" r="46" fill="#E8D3A8"/>
+      <path d="M268 600 C 400 560, 620 560, 756 600 L756 724 L268 724 Z" fill="#BFA273"/>
+      <path d="M268 640 C 420 610, 600 612, 756 645 L756 724 L268 724 Z" fill="#A88B5C"/>
+      <path d="M512 600 C 508 560, 506 530, 512 470" stroke="#6F5636" stroke-width="14" fill="none" stroke-linecap="round"/>
+      <path d="M510 520 C 470 520, 430 495, 412 455 C 462 448, 500 470, 510 512 Z" fill="#8F764B"/>
+      <path d="M511 478 C 490 452, 468 420, 470 384 C 506 400, 520 438, 512 474 Z" fill="#9C8256"/>
+      <rect x="0" y="0" width="1024" height="1024" fill="url(#vignette)"/>
+    </g>
+    <!-- 지금: 선명한 색, 자란 나무 -->
+    <g clip-path="url(#right)">
+      <rect x="0" y="0" width="1024" height="1024" fill="url(#skyNow)"/>
+      <circle cx="660" cy="330" r="46" fill="#FFC15E"/>
+      <circle cx="660" cy="330" r="70" fill="#FFC15E" fill-opacity="0.25"/>
+      <path d="M268 600 C 400 560, 620 560, 756 600 L756 724 L268 724 Z" fill="#5CCB7E"/>
+      <path d="M268 640 C 420 610, 600 612, 756 645 L756 724 L268 724 Z" fill="#3DB565"/>
+      <path d="M500 600 L504 470 L516 470 L522 600 Z" fill="#8A5A2B"/>
+      <circle cx="510" cy="430" r="104" fill="#2FAE5A"/>
+      <circle cx="580" cy="470" r="64" fill="#27994F"/>
+      <circle cx="470" cy="388" r="54" fill="#45C46E"/>
+    </g>
+  </g>
+  <!-- 가운데 경계 -->
+  <rect x="508" y="236" width="8" height="488" fill="#FFFFFF"/>
+  <!-- 폴라로이드 아래 여백: 손글씨 같은 선 -->
+  <path d="M300 790 q40 -14 80 0 t80 0" stroke="#E7D8C4" stroke-width="10" fill="none" stroke-linecap="round"/>
+</g>
