@@ -13,6 +13,8 @@ import { purchasesConfigured, restorePro, setDevPro, usePro } from '../pro';
 import { ensureNotificationPermission, rescheduleAll } from '../reminders';
 import { C, Card, Label, Row } from '../ui';
 
+const PRIVACY_URL = 'https://doit2app.github.io/keepit2/privacy.html';
+
 export default function SettingsScreen() {
   const pro = usePro();
   const { data: saveToGallery } = useData(() => getBool(SETTING_SAVE_TO_GALLERY, true), []);
@@ -116,6 +118,17 @@ export default function SettingsScreen() {
           detail="이미 있는 사진은 건너뛰어요"
           onPress={busy ? undefined : restore}
         />
+      </Card>
+
+      <Label>정보</Label>
+      <Card>
+        <Row
+          title="개인정보처리방침"
+          detail="사진과 기록은 이 휴대폰 안에만 저장돼요"
+          onPress={() => Linking.openURL(PRIVACY_URL)}
+          right={<Text style={styles.chev}>›</Text>}
+        />
+        <Row title="문의" detail="doit2team@gmail.com" onPress={() => Linking.openURL('mailto:doit2team@gmail.com')} />
       </Card>
 
       <View style={{ alignItems: 'center', marginTop: 32 }}>
