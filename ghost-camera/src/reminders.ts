@@ -104,7 +104,7 @@ export async function scheduleReminder(p: Project, lastShotAt: string | null) {
     identifier: idFor(p.id),
     content: {
       title: p.name,
-      body: '오늘 같은 자리에서 찍을 날이에요 📷',
+      body: '오늘 같은 자리에서 찍을 날이에요',
       data: { projectId: p.id },
     },
     trigger: {

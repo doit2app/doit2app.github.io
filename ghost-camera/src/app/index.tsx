@@ -31,14 +31,14 @@ export default function ProjectsScreen() {
         options={{
           headerRight: () => (
             <Pressable onPress={() => router.push('/settings')} hitSlop={12}>
-              <Text style={styles.headerIcon}>⚙︎</Text>
+              <Text style={styles.headerIcon}>설정</Text>
             </Pressable>
           ),
         }}
       />
       {projects && projects.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyEmoji}>📷</Text>
+          <Image source={require('../../assets/icon.png')} style={styles.emptyIcon} />
           <Text style={styles.emptyTitle}>같은 자리에서, 다시 한 장</Text>
           <Text style={styles.emptyText}>
             아이 키, 키우는 식물, 우리 집 창밖처럼{'\n'}
@@ -78,7 +78,7 @@ function ProjectCard({ p }: { p: ProjectSummary }) {
         {p.lastShot ? (
           <Image source={{ uri: thumbUri(p.lastShot) }} style={StyleSheet.absoluteFill} />
         ) : (
-          <Text style={styles.coverEmpty}>📷</Text>
+          <Text style={styles.coverEmpty}>사진{'\n'}없음</Text>
         )}
       </View>
       <View style={styles.cardBody}>
@@ -98,9 +98,9 @@ function ProjectCard({ p }: { p: ProjectSummary }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.bg },
-  headerIcon: { fontSize: 22, color: C.text },
+  headerIcon: { fontSize: 16, color: C.text, fontWeight: '600' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
-  emptyEmoji: { fontSize: 48 },
+  emptyIcon: { width: 88, height: 88, borderRadius: 20, marginBottom: 4 },
   emptyTitle: { fontSize: 20, fontWeight: '800', color: C.text },
   emptyText: { fontSize: 15, color: C.sub, textAlign: 'center', lineHeight: 23 },
   card: {
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  coverEmpty: { fontSize: 24 },
+  coverEmpty: { fontSize: 11, color: C.faint, textAlign: 'center' },
   cardBody: { flex: 1, justifyContent: 'center', gap: 4 },
   cardTitle: { fontSize: 17, fontWeight: '700', color: C.text },
   cardSub: { fontSize: 13, color: C.sub },

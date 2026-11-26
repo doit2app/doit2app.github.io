@@ -97,7 +97,7 @@ export default function ProjectScreen() {
         onPress={() => router.push({ pathname: '/project/[id]/camera', params: { id } })}
       />
       <View style={styles.actions}>
-        <Action label={playing ? '■ 멈추기' : '▶ 넘겨보기'} disabled={shots.length < 2} onPress={() => setPlaying((p) => !p)} />
+        <Action label={playing ? '멈추기' : '넘겨보기'} disabled={shots.length < 2} onPress={() => setPlaying((p) => !p)} />
         <Action
           label="전후 비교"
           disabled={shots.length < 2}

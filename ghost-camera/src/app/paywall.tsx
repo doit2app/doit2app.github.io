@@ -9,10 +9,10 @@ import { buyPro, FREE_PROJECTS, getLifetimePackage, purchasesConfigured, restore
 import { Button, C, Card } from '../ui';
 
 const BENEFITS = [
-  { icon: '📁', title: '프로젝트 무제한', detail: `무료는 ${FREE_PROJECTS}개까지` },
-  { icon: '✨', title: '워터마크 없는 타임랩스·비교 이미지', detail: '' },
-  { icon: '🎞️', title: '더 선명한 1920px 영상', detail: '무료는 1280px' },
-  { icon: '💳', title: '한 번만 결제', detail: '구독이 아니에요. 기기를 바꿔도 복원돼요' },
+  { title: '프로젝트 무제한', detail: `무료는 ${FREE_PROJECTS}개까지` },
+  { title: '워터마크 없는 타임랩스·비교 이미지', detail: '' },
+  { title: '더 선명한 1920px 영상', detail: '무료는 1280px' },
+  { title: '한 번만 결제', detail: '구독이 아니에요. 기기를 바꿔도 복원돼요' },
 ];
 
 export default function PaywallScreen() {
@@ -71,7 +71,9 @@ export default function PaywallScreen() {
         <Card style={{ gap: 14, marginTop: 8 }}>
           {BENEFITS.map((b) => (
             <View key={b.title} style={styles.benefit}>
-              <Text style={styles.icon}>{b.icon}</Text>
+              <View style={styles.check}>
+                <Text style={styles.checkMark}>✓</Text>
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.bTitle}>{b.title}</Text>
                 {b.detail ? <Text style={styles.bDetail}>{b.detail}</Text> : null}
@@ -93,7 +95,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: '800', color: C.text, lineHeight: 32 },
   sub: { fontSize: 15, color: C.sub },
   benefit: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  icon: { fontSize: 22 },
+  check: { width: 24, height: 24, borderRadius: 12, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
+  checkMark: { color: '#fff', fontSize: 13, fontWeight: '700' },
   bTitle: { fontSize: 16, color: C.text, fontWeight: '600' },
   bDetail: { fontSize: 13, color: C.sub, marginTop: 2 },
   footer: { paddingHorizontal: 20, gap: 10 },

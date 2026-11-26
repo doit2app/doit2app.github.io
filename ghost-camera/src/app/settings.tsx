@@ -64,7 +64,7 @@ export default function SettingsScreen() {
       <Label>평생 이용권</Label>
       <Card>
         {pro ? (
-          <Row title="평생 이용권을 쓰고 있어요 🎉" detail="프로젝트 무제한 · 워터마크 없음 · 1920px 영상" />
+          <Row title="평생 이용권을 쓰고 있어요" detail="프로젝트 무제한 · 워터마크 없음 · 1920px 영상" />
         ) : (
           <Row title="평생 이용권 알아보기" detail="한 번 결제로 계속 써요" onPress={() => router.push('/paywall')} right={<Text style={styles.chev}>›</Text>} />
         )}
